@@ -313,6 +313,7 @@ struct NetworkLibraryVersion {
 };
 
 static const NetworkLibraryVersion AVAILABLE_NETWORK_VERSIONS[] = {
+    {"02.07.01", "02.07.01", nullptr, false, nullptr},
     {"02.03.00.62", "02.03.00.62", nullptr, true, nullptr},
     {"02.01.01.52", "02.01.01.52", nullptr, false, nullptr},
     {"02.00.02.50", "02.00.02.50", nullptr, false, "This version may crash on startup due to Bambu Lab's signature verification."},
@@ -329,6 +330,11 @@ inline const char* get_latest_network_version() {
     return AVAILABLE_NETWORK_VERSIONS[0].version;
 }
 
+// True when version ends with .99 (convention for Open Bamboo Networking OSS builds)
+inline bool is_oss_plugin_version(const std::string& version) {
+    const auto pos = version.find_last_of('.');
+    return pos != std::string::npos && version.substr(pos + 1) == "99";
+}
 struct NetworkLibraryVersionInfo {
     std::string version;
     std::string base_version;
