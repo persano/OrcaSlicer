@@ -65,6 +65,9 @@
 #include <wx/fontutil.h>
 #include <wx/glcanvas.h>
 #include <wx/utils.h>
+#if defined(_WIN32)
+#include <windows.h>
+#endif
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
 
@@ -3414,7 +3417,7 @@ void GUI_App::ensure_oss_network_plugin()
     if (fs::exists(bambu_source_dst)) {
         HMODULE hModule = LoadLibraryW(bambu_source_dst.c_str());
         if (hModule) {
-            typedef HRESULT(STDAPICALLTYPE *fnDllRegisterServer)();
+            typedef HRESULT(__stdcall *fnDllRegisterServer)();
             fnDllRegisterServer pfn = (fnDllRegisterServer)GetProcAddress(hModule, "DllRegisterServer");
             if (pfn) {
                 HRESULT hr = pfn();
@@ -3424,6 +3427,17 @@ void GUI_App::ensure_oss_network_plugin()
         }
     }
 #endif
+
+    // Auto-import slicer credentials from BambuStudio if present and not yet in data_dir
+    fs::path bbl_studio_dir = fs::path(data_dir()).parent_path() / "BambuStudio";
+    for (const auto& pem : { "slicer_key.pem", "slicer_cert.pem", "slicer_crl.pem" }) {
+        fs::path src_pem = bbl_studio_dir / pem;
+        fs::path dst_pem = fs::path(data_dir()) / pem;
+        if (fs::exists(src_pem) && !fs::exists(dst_pem)) {
+            copy_if_diff(src_pem, dst_pem);
+            BOOST_LOG_TRIVIAL(info) << __FUNCTION__ << ": auto-imported " << pem << " from BambuStudio";
+        }
+    }
 
     // Ensure obn.conf enables Option B (Cloud mode without Developer Mode)
     fs::path obn_conf = fs::path(data_dir()) / "obn.conf";
