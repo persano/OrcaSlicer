@@ -1,0 +1,43 @@
+name: Nightly BBL Cloud Cron
+
+on:
+  schedule:
+    - cron: '0 3 * * *' # 3:00 AM UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  check_and_build:
+    name: Check Upstream & Build Nightly
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout bbl-port-nightly
+        uses: actions/checkout@v4
+        with:
+          ref: bbl-port-nightly
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/OrcaSlicer/OrcaSlicer.git || true
+          git fetch upstream main
+
+      - name: Check Upstream Main
+        id: check_upstream
+        run: |
+          BEHIND_COUNT=$(git rev-list --count HEAD..upstream/main)
+          echo "Commits behind upstream/main: $BEHIND_COUNT"
+          echo "behind_count=$BEHIND_COUNT" >> $GITHUB_OUTPUT
+
+      - name: Trigger Build All on bbl-port-nightly
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Triggering Build all on bbl-port-nightly..."
+          gh workflow run "Build all" --repo ${{ github.repository }} --ref bbl-port-nightly
