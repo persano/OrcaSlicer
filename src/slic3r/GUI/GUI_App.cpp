@@ -3351,6 +3351,8 @@ void GUI_App::copy_network_if_available()
     if (boost::filesystem::exists(changelog_file))
         fs::remove(changelog_file);
     app_config->set("update_network_plugin", "false");
+}
+
 #ifdef ORCA_OSS_NETWORK_PLUGIN
 void GUI_App::ensure_oss_network_plugin()
 {
