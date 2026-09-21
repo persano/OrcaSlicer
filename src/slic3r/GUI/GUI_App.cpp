@@ -3416,7 +3416,7 @@ void GUI_App::ensure_oss_network_plugin()
 
 bool GUI_App::is_oss_network_plugin() const
 {
-    return bbl_network_agent ? bbl_network_agent->is_oss_network_plugin() : false;
+    return BBLNetworkPlugin::instance().is_oss_network_plugin();
 }
 #endif // ORCA_OSS_NETWORK_PLUGIN
 
