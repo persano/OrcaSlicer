@@ -113,6 +113,23 @@ int BBLNetworkPlugin::initialize(bool using_backup, const std::string& version)
     library = plugin_folder.string() + "/" + std::string("lib") + std::string(BAMBU_NETWORK_LIBRARY) + "_" + version + lib_ext;
 #endif
 
+    // The open-source plugin ships as a single unversioned bambu_networking.dll:
+    // there is only ever one build, and the _<version> suffix exists solely for
+    // the proprietary OTA download flow it does not use. When the versioned file
+    // is absent but the plain name is present, load that in place so the on-disk
+    // file stays bambu_networking.dll.
+    if (!boost::filesystem::exists(library)) {
+#if defined(_MSC_VER) || defined(_WIN32)
+        boost::filesystem::path unversioned = plugin_folder / (std::string(BAMBU_NETWORK_LIBRARY) + ".dll");
+#elif defined(__WXMAC__)
+        boost::filesystem::path unversioned = plugin_folder / (std::string("lib") + std::string(BAMBU_NETWORK_LIBRARY) + ".dylib");
+#else
+        boost::filesystem::path unversioned = plugin_folder / (std::string("lib") + std::string(BAMBU_NETWORK_LIBRARY) + ".so");
+#endif
+        if (boost::filesystem::exists(unversioned))
+            library = unversioned.string();
+    }
+
 #if defined(_MSC_VER) || defined(_WIN32)
     wchar_t lib_wstr[256];
     memset(lib_wstr, 0, sizeof(lib_wstr));
@@ -173,8 +190,14 @@ int BBLNetworkPlugin::initialize(bool using_backup, const std::string& version)
         }
     }
 
+    // The .99 sentinel identifies the open-source plugin (see is_oss_version).
+    // Prefer the plugin's own version; fall back to the requested one only when
+    // get_version is unavailable.
+    m_is_oss_plugin = is_oss_version(loaded_version.empty() ? version : loaded_version);
+
     BOOST_LOG_TRIVIAL(info) << "BBLNetworkPlugin::initialize: legacy_mode="
         << (m_use_legacy_network ? "true" : "false")
+        << ", oss_plugin=" << (m_is_oss_plugin ? "true" : "false")
         << ", library=" << library
         << ", version=" << (loaded_version.empty() ? "unknown" : loaded_version)
         << ", send_message=" << (m_send_message ? "loaded" : "null")
@@ -188,6 +211,10 @@ int BBLNetworkPlugin::initialize(bool using_backup, const std::string& version)
 int BBLNetworkPlugin::unload()
 {
     UnloadFTModule();
+    clear_all_function_pointers();
+
+    m_use_legacy_network = false;
+    m_is_oss_plugin = false;
 
 #if defined(_MSC_VER) || defined(_WIN32)
     if (m_networking_module) {

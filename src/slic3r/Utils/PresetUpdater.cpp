@@ -1376,7 +1376,11 @@ void PresetUpdater::sync(std::string http_url, std::string language, std::string
         }
 		if (p->cancel)
 			return;
+#ifndef ORCA_OSS_NETWORK_PLUGIN
         this->p->sync_plugins(http_url, plugin_version);
+#else
+        BOOST_LOG_TRIVIAL(info) << "[Orca Updater] sync_plugins skipped: using bundled OSS network plugin";
+#endif
         this->p->sync_printer_config(http_url);
 		//if (p->cancel)
 		//	return;
