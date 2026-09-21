@@ -15,6 +15,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PATCH_DIR = REPO_ROOT.parent / "bbl-patches" / "v2.4.2-port"
+NIGHTLY_PATCH_DIR = REPO_ROOT.parent / "bbl-patches" / "nightly-port"
 CLEAN_PATCH_DIR = REPO_ROOT.parent / "bbl-patches" / "clean"
 
 
@@ -120,14 +121,24 @@ def apply_patches(patch_dir: Path):
 def main():
     parser = argparse.ArgumentParser(description="Apply Bambu Lab cloud patches to OrcaSlicer")
     parser.add_argument("--ref", default=None, help="Target git ref (tag, branch, commit) to checkout first")
-    parser.add_argument("--clean-only", action="store_true", help="Use raw clean patch series instead of v2.4.2 series")
+    parser.add_argument("--nightly", action="store_true", help="Use nightly patch series")
+    parser.add_argument("--clean-only", action="store_true", help="Use raw clean patch series")
     args = parser.parse_args()
 
     if args.ref:
         print(f"[INFO] Checking out target ref: {args.ref}")
         run_cmd(["git", "checkout", args.ref])
 
-    target_dir = CLEAN_PATCH_DIR if args.clean_only else (PATCH_DIR if PATCH_DIR.exists() else CLEAN_PATCH_DIR)
+    if args.nightly or (args.ref and ("main" in args.ref or "nightly" in args.ref)):
+        target_dir = NIGHTLY_PATCH_DIR
+    elif args.clean_only:
+        target_dir = CLEAN_PATCH_DIR
+    elif PATCH_DIR.exists():
+        target_dir = PATCH_DIR
+    else:
+        target_dir = CLEAN_PATCH_DIR
+
+    print(f"[INFO] Target patch directory: {target_dir}")
     success = apply_patches(target_dir)
 
     if success:
